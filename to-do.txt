@@ -1,0 +1,10 @@
+- Have a config/ directory where all configs and templates are kept
+  - prompt.tpl - Overall prompt template
+  - tree.tpl - Source tree template
+  - code.tpl - Source code template
+  - config.json - Configuration settings
+    - Includes/excludes
+
+- Turn on/off tree outline generation
+- Pull source from github repo (user enters the git URL)
+- Automatically determine the project type and determine the includes/excludes!

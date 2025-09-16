@@ -76,7 +76,7 @@ function readAndMerge(dir, baseDir, level, result) {
 async function main() {
   try {
     console.log('File Merger - CLI Mode')
-    console.log('=====================')
+    console.log('======================')
     
     const SOURCE_DIR = await getSourceDirectory()
     const TARGET_FILE = await getTargetFile()
