@@ -8,3 +8,7 @@
 - Turn on/off tree outline generation
 - Pull source from github repo (user enters the git URL)
 - Automatically determine the project type and determine the includes/excludes!
+- Add some interesting prompt types
+  - Analyse the source code and provide an overview
+  - Extract the feature list and create a CSV file
+  
