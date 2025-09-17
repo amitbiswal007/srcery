@@ -1,8 +1,9 @@
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
 
 // Load config.json
-const config = JSON.parse(fs.readFileSync(path.join(__dirname, 'config/config.json'), 'utf8'));
+let config = JSON.parse(fs.readFileSync(path.join(__dirname, 'config/config.json'), 'utf8'));
 
 // Load templates
 const promptTpl = fs.readFileSync(path.join(__dirname, 'config/prompt.tpl'), 'utf8');
@@ -43,12 +44,65 @@ function readAndMerge(dir, baseDir, level, result) {
   });
 }
 
+// Function to check if input is a GitHub URL
+function isGitUrl(str) {
+  return str.startsWith("http://") || str.startsWith("https://") || str.endsWith(".git");
+}
+
+// Clone repo if GitHub URL
+function cloneRepo(gitUrl) {
+  const tempDir = path.join(__dirname, 'temp-repo');
+
+  // Remove old temp repo if exists
+  if (fs.existsSync(tempDir)) {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
+
+  console.log(`Cloning repository: ${gitUrl}`);
+  execSync(`git clone ${gitUrl} ${tempDir}`, { stdio: 'inherit' });
+  return tempDir;
+}
+
+// Detect project type and adjust includes/excludes
+function detectProjectType(sourceDir) {
+  const files = fs.readdirSync(sourceDir);
+
+  if (files.includes("package.json")) {
+    console.log("Detected Node.js/React project");
+    config.includes = [".js", ".ts", ".tsx", ".jsx", ".json", ".html", ".css"];
+    config.excludes = ["node_modules", "dist", "build", "public"];
+  } else if (files.includes("requirements.txt") || files.some(f => f.endsWith(".py"))) {
+    console.log("Detected Python project");
+    config.includes = [".py", ".yml", ".ini"];
+    config.excludes = ["venv", "__pycache__"];
+  } else if (files.includes("pom.xml") || files.some(f => f.endsWith(".java"))) {
+    console.log("Detected Java project");
+    config.includes = [".java", ".xml", ".properties"];
+    config.excludes = ["target", "bin"];
+  } else if (files.some(f => f.endsWith(".csproj"))) {
+    console.log("Detected C#/.NET project");
+    config.includes = [".cs", ".config"];
+    config.excludes = ["bin", "obj"];
+  } else {
+    console.log("Unknown project type → using config.json values");
+    // keep whatever is in config.json
+  }
+}
+
 // Main function
 function main() {
-  const sourceDir = process.argv[2]; // pass directory as argument
-  if (!sourceDir) {
-    console.error("Please provide a source directory: node merge-files.js ./src");
+  const inputPath = process.argv[2]; // local path or GitHub URL
+
+  if (!inputPath) {
+    console.error("Please provide a source directory or GitHub repo URL");
     return;
+  }
+
+  let sourceDir = inputPath;
+
+  // If input is GitHub URL, clone repo
+  if (isGitUrl(inputPath)) {
+    sourceDir = cloneRepo(inputPath);
   }
 
   if (!fs.existsSync(sourceDir)) {
@@ -56,13 +110,16 @@ function main() {
     return;
   }
 
+  // Detect project type
+  detectProjectType(sourceDir);
+
   console.log(`Processing files from: ${sourceDir}`);
-  console.log(` Output file: ${config.outputFile}`);
+  console.log(`Output file: ${config.outputFile}`);
 
   let result = { tree: '', contents: '' };
   readAndMerge(sourceDir, '', 0, result);
 
-  // Apply tree template if enabled
+  // Apply tree template only if enabled
   const treeSection = config.showTree ? treeTpl.replace('{{tree}}', result.tree) : '';
 
   // Apply prompt template
@@ -72,7 +129,7 @@ function main() {
 
   // Write output
   fs.writeFileSync(config.outputFile, finalOutput);
-  console.log(` Successfully merged files to: ${config.outputFile}`);
+  console.log(`Successfully merged files to: ${config.outputFile}`);
 }
 
 main();
