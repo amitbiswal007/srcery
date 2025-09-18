@@ -2,6 +2,22 @@ const fs = require('fs');
 const path = require('path');
 const git = require('isomorphic-git');
 const http = require('isomorphic-git/http/node');
+const readline = require('readline');
+
+// Utility function to ask yes/no question
+function askQuestion(query) {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+  });
+
+  return new Promise(resolve => {
+    rl.question(query, answer => {
+      rl.close();
+      resolve(answer.trim().toLowerCase());
+    });
+  });
+}
 
 
 // Load config.json
@@ -74,31 +90,16 @@ async function cloneRepo(gitUrl) {
 }
 
 
-// Detect project type and adjust includes/excludes
 function detectProjectType(sourceDir) {
   const files = fs.readdirSync(sourceDir);
 
-  if (files.includes("package.json")) {
-    console.log("Detected Node.js/React project");
-    config.includes = [".js", ".ts", ".tsx", ".jsx", ".json", ".html", ".css"];
-    config.excludes = ["node_modules", "dist", "build", "public", "package-lock.json"];
-  } else if (files.includes("requirements.txt") || files.some(f => f.endsWith(".py"))) {
-    console.log("Detected Python project");
-    config.includes = [".py", ".yml", ".ini"];
-    config.excludes = ["venv", "__pycache__"];
-  } else if (files.includes("pom.xml") || files.some(f => f.endsWith(".java"))) {
-    console.log("Detected Java project");
-    config.includes = [".java", ".xml", ".properties"];
-    config.excludes = ["target", "bin"];
-  } else if (files.some(f => f.endsWith(".csproj"))) {
-    console.log("Detected C#/.NET project");
-    config.includes = [".cs", ".config"];
-    config.excludes = ["bin", "obj"];
-  } else {
-    console.log("Unknown project type → using config.json values");
-    // keep whatever is in config.json
-  }
+  if (files.includes("package.json")) return "node";
+  if (files.includes("requirements.txt") || files.some(f => f.endsWith(".py"))) return "python";
+  if (files.includes("pom.xml") || files.some(f => f.endsWith(".java"))) return "java";
+  if (files.some(f => f.endsWith(".csproj"))) return "dotnet";
+  return "unknown";
 }
+
 
 // Main function
 async function main() {
@@ -111,7 +112,6 @@ async function main() {
 
   let sourceDir = inputPath;
 
-  // If input is GitHub URL, clone repo
   if (isGitUrl(inputPath)) {
     sourceDir = await cloneRepo(inputPath);
   }
@@ -122,7 +122,36 @@ async function main() {
   }
 
   // Detect project type
-  detectProjectType(sourceDir);
+  const projectType = detectProjectType(sourceDir);
+  console.log(`Detected project type: ${projectType}`);
+
+  if (projectType !== "unknown") {
+    const answer = await askQuestion(`We detected a ${projectType} project. Use default includes/excludes? (Y/N): `);
+    if (answer === "y" || answer === "yes") {
+      switch (projectType) {
+        case "node":
+          config.includes = [".js", ".ts", ".tsx", ".jsx", ".json", ".html", ".css"];
+          config.excludes = ["node_modules", "dist", "build", "public", "package-lock.json"];
+          break;
+        case "python":
+          config.includes = [".py", ".yml", ".ini"];
+          config.excludes = ["venv", "__pycache__"];
+          break;
+        case "java":
+          config.includes = [".java", ".xml", ".properties"];
+          config.excludes = ["target", "bin"];
+          break;
+        case "dotnet":
+          config.includes = [".cs", ".config"];
+          config.excludes = ["bin", "obj"];
+          break;
+      }
+    } else {
+      console.log("Using includes/excludes from config.json instead.");
+    }
+  } else {
+    console.log("Unknown project type → using config.json values");
+  }
 
   console.log(`Processing files from: ${sourceDir}`);
   console.log(`Output file: ${config.outputFile}`);
@@ -130,18 +159,15 @@ async function main() {
   let result = { tree: '', contents: '' };
   readAndMerge(sourceDir, '', 0, result);
 
-  // Apply tree template only if enabled
   const treeSection = config.showTree ? treeTpl.replace('{{tree}}', result.tree) : '';
-
-  // Apply prompt template
   const finalOutput = promptTpl
     .replace('{{tree}}', treeSection)
     .replace('{{contents}}', result.contents);
 
-  // Write output
   fs.writeFileSync(config.outputFile, finalOutput);
   console.log(`Successfully merged files to: ${config.outputFile}`);
 }
+
 
 main().catch(err => console.error("Error:", err));
 
