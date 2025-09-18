@@ -81,7 +81,7 @@ function detectProjectType(sourceDir) {
   if (files.includes("package.json")) {
     console.log("Detected Node.js/React project");
     config.includes = [".js", ".ts", ".tsx", ".jsx", ".json", ".html", ".css"];
-    config.excludes = ["node_modules", "dist", "build", "public"];
+    config.excludes = ["node_modules", "dist", "build", "public", "package-lock.json"];
   } else if (files.includes("requirements.txt") || files.some(f => f.endsWith(".py"))) {
     console.log("Detected Python project");
     config.includes = [".py", ".yml", ".ini"];
