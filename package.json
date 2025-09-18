@@ -1,5 +1,24 @@
 {
+
   "dependencies": {
     "isomorphic-git": "^1.33.1"
   }
+
+  "name": "srcery",
+  "version": "1.0.0",
+  "description": "Flatten source code for LLMs",
+  "main": "merge-files.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rmadhuram/srcery.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/rmadhuram/srcery/issues"
+  },
+  "homepage": "https://github.com/rmadhuram/srcery#readme"
 }
