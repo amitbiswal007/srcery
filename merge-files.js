@@ -1,6 +1,8 @@
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
+const git = require('isomorphic-git');
+const http = require('isomorphic-git/http/node');
+
 
 // Load config.json
 let config = JSON.parse(fs.readFileSync(path.join(__dirname, 'config/config.json'), 'utf8'));
@@ -46,22 +48,31 @@ function readAndMerge(dir, baseDir, level, result) {
 
 // Function to check if input is a GitHub URL
 function isGitUrl(str) {
-  return str.startsWith("http://") || str.startsWith("https://") || str.endsWith(".git");
+  return (str.startsWith("http://") || str.startsWith("https://")) && str.endsWith(".git");
 }
 
-// Clone repo if GitHub URL
-function cloneRepo(gitUrl) {
+//Add a new async cloneRepo function
+async function cloneRepo(gitUrl) {
   const tempDir = path.join(__dirname, 'temp-repo');
 
-  // Remove old temp repo if exists
   if (fs.existsSync(tempDir)) {
     fs.rmSync(tempDir, { recursive: true, force: true });
   }
 
-  console.log(`Cloning repository: ${gitUrl}`);
-  execSync(`git clone ${gitUrl} ${tempDir}`, { stdio: 'inherit' });
+  console.log(`Cloning repository with isomorphic-git: ${gitUrl}`);
+
+  await git.clone({
+    fs,
+    http,
+    dir: tempDir,
+    url: gitUrl,
+    singleBranch: true,
+    depth: 1   
+  });
+
   return tempDir;
 }
+
 
 // Detect project type and adjust includes/excludes
 function detectProjectType(sourceDir) {
@@ -90,7 +101,7 @@ function detectProjectType(sourceDir) {
 }
 
 // Main function
-function main() {
+async function main() {
   const inputPath = process.argv[2]; // local path or GitHub URL
 
   if (!inputPath) {
@@ -102,7 +113,7 @@ function main() {
 
   // If input is GitHub URL, clone repo
   if (isGitUrl(inputPath)) {
-    sourceDir = cloneRepo(inputPath);
+    sourceDir = await cloneRepo(inputPath);
   }
 
   if (!fs.existsSync(sourceDir)) {
@@ -132,4 +143,5 @@ function main() {
   console.log(`Successfully merged files to: ${config.outputFile}`);
 }
 
-main();
+main().catch(err => console.error("Error:", err));
+
