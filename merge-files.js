@@ -24,8 +24,6 @@ function askQuestion(query) {
 let config = JSON.parse(fs.readFileSync(path.join(__dirname, 'config/config.json'), 'utf8'));
 
 // Load templates
-const promptTpl = fs.readFileSync(path.join(__dirname, 'config/prompt.tpl'), 'utf8');
-const treeTpl = fs.readFileSync(path.join(__dirname, 'config/tree.tpl'), 'utf8');
 const codeTpl = fs.readFileSync(path.join(__dirname, 'config/code.tpl'), 'utf8');
 
 // Recursive function to read files and build tree
@@ -103,7 +101,7 @@ function detectProjectType(sourceDir) {
 
 // Main function
 async function main() {
-  const inputPath = process.argv[2]; // local path or GitHub URL
+  const inputPath = process.argv[2];  // local path or GitHub URL
 
   if (!inputPath) {
     console.error("Please provide a source directory or GitHub repo URL");
@@ -123,19 +121,19 @@ async function main() {
   const projectFileMap = {
     node: {
       includes: [".js", ".ts", ".tsx", ".jsx", ".json", ".html", ".css"],
-      excludes: ["node_modules", "dist", "build", "public", "package-lock.json"],
+      excludes: ["node_modules", "dist", "build", "public", "package-lock.json", ".git" ],
     },
     python: {
       includes: [".py", ".yml", ".ini"],
-      excludes: ["venv", "__pycache__"],
+      excludes: ["venv", "__pycache__", ".git"],
     },
     java: {
       includes: [".java", ".xml", ".properties"],
-      excludes: ["target", "bin"],
+      excludes: ["target", "bin", ".git"],
     },
     dotnet: {
       includes: [".cs", ".config"],
-      excludes: ["bin", "obj"],
+      excludes: ["bin", "obj"," .git"],
     },
   };
 
@@ -158,21 +156,51 @@ async function main() {
     console.log("Unknown project type → using config.json values");
   }
 
-  console.log(`Processing files from: ${sourceDir}`);
+ console.log(`Processing files from: ${sourceDir}`);
   console.log(`Output file: ${config.outputFile}`);
 
-  let result = { tree: '', contents: '' };
-  readAndMerge(sourceDir, '', 0, result);
+ let result = { tree: '', contents: '' };
+readAndMerge(sourceDir, '', 0, result);
 
-  const treeSection = config.showTree ? treeTpl.replace('{{tree}}', result.tree) : '';
-  const finalOutput = promptTpl
-    .replace('{{tree}}', treeSection)
-    .replace('{{contents}}', result.contents);
+
+  // Always show menu (whether user said Y or N earlier)
+  console.log(`
+  Please select one option:
+  1) Analyse the source code and provide an overview
+  2) Extract the feature list and create a CSV file
+  3) Generate a README.MD file
+  4) No additional prompt
+  `);
+
+  const choice = await askQuestion("Enter your choice (1-4): ");
+  let tplFile = "";
+
+  switch (choice) {
+    case "1":
+      tplFile = path.join(__dirname, "config/analyze.tpl");
+      break;
+    case "2":
+      tplFile = path.join(__dirname, "config/features.tpl");
+      break;
+    case "3":
+      tplFile = path.join(__dirname, "config/readme.tpl");
+      break;
+    case "4":
+    default:
+      tplFile = path.join(__dirname, "config/prompt.tpl");
+      break;
+  }
+
+  // Load chosen template
+  const chosenTpl = fs.readFileSync(tplFile, "utf8");
+
+  const finalOutput = chosenTpl
+    .replace("{{tree}}", result.tree)
+    .replace("{{contents}}", result.contents);
 
   fs.writeFileSync(config.outputFile, finalOutput);
   console.log(`Successfully merged files to: ${config.outputFile}`);
-}
-
+  }
 
 main().catch(err => console.error("Error:", err));
 
