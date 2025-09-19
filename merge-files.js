@@ -120,32 +120,37 @@ async function main() {
     console.error(`Error: Source directory '${sourceDir}' does not exist!`);
     return;
   }
+  const projectFileMap = {
+    node: {
+      includes: [".js", ".ts", ".tsx", ".jsx", ".json", ".html", ".css"],
+      excludes: ["node_modules", "dist", "build", "public", "package-lock.json"],
+    },
+    python: {
+      includes: [".py", ".yml", ".ini"],
+      excludes: ["venv", "__pycache__"],
+    },
+    java: {
+      includes: [".java", ".xml", ".properties"],
+      excludes: ["target", "bin"],
+    },
+    dotnet: {
+      includes: [".cs", ".config"],
+      excludes: ["bin", "obj"],
+    },
+  };
 
   // Detect project type
   const projectType = detectProjectType(sourceDir);
   console.log(`Detected project type: ${projectType}`);
 
-  if (projectType !== "unknown") {
-    const answer = await askQuestion(`We detected a ${projectType} project. Use default includes/excludes? (Y/N): `);
+  if (projectType !== "unknown" && projectFileMap[projectType] ) {
+    const answer = await askQuestion(
+      `We detected a ${projectType} project. Use default includes/excludes? (Y/N): `
+    );
     if (answer === "y" || answer === "yes") {
-      switch (projectType) {
-        case "node":
-          config.includes = [".js", ".ts", ".tsx", ".jsx", ".json", ".html", ".css"];
-          config.excludes = ["node_modules", "dist", "build", "public", "package-lock.json"];
-          break;
-        case "python":
-          config.includes = [".py", ".yml", ".ini"];
-          config.excludes = ["venv", "__pycache__"];
-          break;
-        case "java":
-          config.includes = [".java", ".xml", ".properties"];
-          config.excludes = ["target", "bin"];
-          break;
-        case "dotnet":
-          config.includes = [".cs", ".config"];
-          config.excludes = ["bin", "obj"];
-          break;
-      }
+      config.includes = projectFileMap[projectType].includes;
+      config.excludes = projectFileMap[projectType].excludes;
+
     } else {
       console.log("Using includes/excludes from config.json instead.");
     }
