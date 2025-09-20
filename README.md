@@ -1,5 +1,7 @@
 # **Srcery** ✨
 
+[**Note**: This README was generated using a prompt created by Srcery in Gemini!]
+
 Srcery is a command-line tool designed to **flatten source code** into a single, comprehensive text file. This is particularly useful for preparing a codebase for analysis by a **Large Language Model (LLM)**, as it consolidates all relevant files into a structured, readable format.
 
 -----
